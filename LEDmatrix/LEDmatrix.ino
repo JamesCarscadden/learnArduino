@@ -54,6 +54,8 @@ void setup() {
   pinMode(LEDARRAY_DI, OUTPUT);
   pinMode(LEDARRAY_CLK, OUTPUT);
   pinMode(LEDARRAY_LAT, OUTPUT);
+
+  Serial.begin(9600);
 }
 
 // Toggle a particular pin HIGH/LOW
@@ -128,7 +130,7 @@ void write_row(int rowIndex, int rowValues[16])
 
 const int messageLength = 31;
 // "Hello"
-const int rowValues[16][messageLength] =
+const int message[16][messageLength] =
   {
     {1,1,0,0,1,1,0,1,1,1,1,1,0,1,1,0,0,0,0,1,1,0,0,0,0,1,1,1,1,1,1},
     {1,1,0,0,1,1,0,1,1,0,0,0,0,1,1,0,0,0,0,1,1,0,0,0,0,1,1,1,1,1,1},
@@ -148,9 +150,10 @@ const int rowValues[16][messageLength] =
     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
   };
 
-const int displaySpeed = 20;
+const int displaySpeed = 30;
 
-void compositeMatrix(int offset, int messageLength, int rowValues[], int workingRow[])
+template< typename T, size_t N >
+void compositeMatrix(T (&rowValues)[N], int offset, int workingRow[])
 {
   int i = 0;
   for (i = 0; i < 16; i++)
@@ -158,7 +161,7 @@ void compositeMatrix(int offset, int messageLength, int rowValues[], int working
 
     // assuming our offset is between 0 and messageLenth, add that
     //  part of the rowValue to the workingRow, otherwise add 0
-    if (((offset + i) < messageLength) && ((offset + i) >= 0))
+    if (((offset + i) < N) && ((offset + i) >= 0))
     {
       workingRow[i] = rowValues[offset + i];
     } else {
@@ -167,31 +170,47 @@ void compositeMatrix(int offset, int messageLength, int rowValues[], int working
   }
 }
 
-void loop() {
-  // put your main code here, to run repeatedly:
+template< typename T, size_t N, size_t X >
+void scroll( T (&rowValues)[N][X], int scrollSpeed)
+{
   int i = 0;
   int j = 0;
 
+  Serial.println("    Enter scroll");
   // We start at -16 here so that we start with a blank display
-  for (j = -16; j < messageLength; j++)
+  for (j = -16; j < 31; j++)
   {
-  
+
+    String out = "        scroll loop: ";
+    String out2 = out + j;
+    Serial.println(out2);
     // This loop controls how fast the message scrolls by
-    //  displaying the same image 'displaySpeed' times
+    //  displaying the same image 'scrollSpeed' times
     //  with a 300 microsecond delay per image
     //  So '30' speed * 100 microseconds means each
     //  frame is displayed for 3000 microseconds
     int k = 0;
-    for (k = 0; k < displaySpeed; k++)
+    for (k = 0; k < scrollSpeed; k++)
     {
       // This loop controls the display of a single frame
       //  of the message, by writing 16 rows of data
       for (i = 0; i < 16; i++)
       {   
         int displayRow[16] = {0};
-        compositeMatrix(j, messageLength, rowValues[i], displayRow);
+        compositeMatrix(rowValues[i], j, displayRow);
         write_row(i, displayRow);
       }
     }
   }
+
+  Serial.println("    Exit scroll");
+}
+
+void loop() {
+  Serial.println("Starting loop");
+  // put your main code here, to run repeatedly:
+  scroll( message, displaySpeed);
+  Serial.println("Ending loop");
+
+  delay(1000);
 }
